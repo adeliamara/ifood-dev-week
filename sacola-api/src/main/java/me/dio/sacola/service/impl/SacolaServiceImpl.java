@@ -12,6 +12,7 @@ import me.dio.sacola.resource.ItemDto;
 import me.dio.sacola.service.SacolaService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -22,8 +23,7 @@ public class SacolaServiceImpl implements SacolaService {
     private  final ItemRepository itemRepository;
     @Override
     public Item incluirItemNaSacola(ItemDto itemDto) {
-        Sacola sacola;
-        sacola = verSacola(itemDto.getSacolaId());
+        Sacola sacola = verSacola(itemDto.getSacolaId());
 
         if(sacola.isFechada()){
             throw new RuntimeException("Essa sacola está fechada!");
@@ -42,21 +42,35 @@ public class SacolaServiceImpl implements SacolaService {
 
         List<Item> itensDaSacola = sacola.getItens();
 
-        if(!itensDaSacola.isEmpty()){
+        if(itensDaSacola.isEmpty()){
             itensDaSacola.add(itemParaSerInserido);
         }else{
             Restaurante restauranteAtual = itensDaSacola.get(0).getProduto().getRestaurante();
             Restaurante restauranteNovoItem = itemParaSerInserido.getProduto().getRestaurante();
 
-            if(restauranteAtual == restauranteNovoItem){
+            if(restauranteAtual.equals(restauranteNovoItem)){
                 itensDaSacola.add(itemParaSerInserido);
             }else{
                              throw new RuntimeException("Não é possível adicionar produtos de restaurentes diferentes. Feche a sacola ou esvazie!");
             }
         }
+
+        List<Double> valorDosItens = new ArrayList<>();
+
+        for (Item itemDaSacola: itensDaSacola) {
+            double valorDoItem =
+                    itemDaSacola.getProduto().getValorUnitario() * itemDaSacola.getQuandidade();
+            valorDosItens.add(valorDoItem);
+        }
+
+        double valorTotalSacola = valorDosItens.stream()
+                .mapToDouble(valorTotalDeCadaItem -> valorTotalDeCadaItem)
+                .sum();
+
+        sacola.setValorTotal(valorTotalSacola);
         sacolaRepository.save(sacola);
 
-        return itemRepository.save(itemParaSerInserido);
+        return itemParaSerInserido;
     }
 
     @Override
